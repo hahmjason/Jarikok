@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자리콕 웹(Web) · 대경선 실시간 스마트 좌석 알리미</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo">콕</div>
+    <div>
+      <div class="brand-name">자리콕 웹(Web)</div>
+      <div class="brand-sub">대경선 실시간 스마트 좌석 알리미 · 글쓰기와 발표 3조</div>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="live">실시간 좌석</button>
+    <button class="tab" data-tab="logic">공정 방법 · 로직</button>
+    <button class="tab" data-tab="conclusion">결론</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>칸마다 헤맬 필요 없이 빈자리와 곧 내릴 자리를 웹으로 한 번에 찾자!</h1>
+  <p>좌석 상태 감지 센서(압력·정전용량·CCTV) + 기차 Wi-Fi 웹 시트 모식도 = <b>자리콕 웹</b> (1 + 1 = NEW 1)</p>
+</section>
+
+<main>
+<!-- ======================= 실시간 좌석 ======================= -->
+<section id="tab-live" class="panel active">
+  <div class="live-grid">
+
+    <!-- 승객 화면 (스마트폰) -->
+    <div class="phone-wrap">
+      <div class="phone-caption">승객 화면 · 기차 Wi-Fi 접속 시 앱 설치 없이 자동으로 열림</div>
+      <div class="phone">
+        <div class="phone-status"><span id="clock">08:12</span><span>Wi-Fi · 대경선</span></div>
+        <div class="wifi-banner">
+          <span class="dot ok"></span>
+          <span><b id="train-no">제 07편성</b> 자동 인식 · 비콘 <span id="beacon">DG07-1</span> → 지금 <b id="my-car">1호차</b></span>
+        </div>
+
+        <div class="route" id="route"></div>
+        <div class="next-box">
+          <div>
+            <div class="muted small" id="next-label">다음 역</div>
+            <div class="next-st" id="next-st">사곡</div>
+          </div>
+          <div class="eta" id="eta">4분 0초 후</div>
+        </div>
+
+        <div class="chips">
+          <div class="chip c-empty"><span class="n" id="cnt-empty">0</span><span>빈자리</span></div>
+          <div class="chip c-leave"><span class="n" id="cnt-leave">0</span><span>곧 내릴 자리</span></div>
+          <div class="chip c-block"><span class="n" id="cnt-block">0</span><span>가방·2칸 차지</span></div>
+        </div>
+        <div class="forecast" id="forecast">-</div>
+
+        <div id="cars"></div>
+
+        <div class="legend">
+          <span><i class="sw s-empty"></i>빈자리</span>
+          <span><i class="sw s-leave"></i>곧 내릴 자리</span>
+          <span><i class="sw s-block"></i>가방·2칸 차지</span>
+          <span><i class="sw s-occ"></i>착석</span>
+        </div>
+        <div class="phone-foot">좌석을 누르면 오른쪽에 센서 판정 근거가 표시됩니다</div>
+      </div>
+    </div>
+
+    <!-- 엔지니어 패널 -->
+    <div class="eng">
+      <div class="card controls">
+        <div class="card-title">시뮬레이션 제어 <span class="muted small">(가상 열차 · 1초 = 1주기)</span></div>
+        <div class="btn-row">
+          <button id="btn-play" class="btn primary">일시정지</button>
+          <button class="btn speed" data-speed="1">1×</button>
+          <button class="btn speed active" data-speed="5">5×</button>
+          <button class="btn speed" data-speed="20">20×</button>
+          <button id="btn-skip" class="btn">역 도착 직전으로</button>
+          <button id="btn-reset" class="btn">처음부터</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">폐루프 파이프라인 (이번 주기)</div>
+        <div class="pipe">
+          <div class="stage st-s"><div class="st-h">① SENSING</div>
+            <div>압력 True 좌석 <b id="p-true">0</b>석</div>
+            <div>YOLO 실행 <b id="yolo-runs">0</b> / 78석</div>
+            <div class="muted small">게이팅 연산 절감 <b id="yolo-save">0%</b></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="stage st-p"><div class="st-h">② PROCESSING</div>
+            <div>CoP 임계 θ = <b id="cop-th">0.30</b></div>
+            <div>다음 역 하차 기대 <b id="exp-free">0</b>석</div>
+            <div class="muted small">하차율 r(다음역) <b id="rate-next">-</b></div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="stage st-a"><div class="st-h">③ ACTUATING</div>
+            <div>웹 표시 · LED 출력</div>
+            <div>HRI 경고 <b id="hri-n">0</b>석</div>
+            <div class="muted small">추천 칸 <b id="rec-car">-</b></div>
+          </div>
+        </div>
+        <div class="feedback">
+          <div class="st-h">↺ FEEDBACK (출발 시 예측 검증)</div>
+          <div class="fb-row">
+            <span>적중 <b id="fb-hit">0</b></span>
+            <span>오경보 <b id="fb-fa">0</b></span>
+            <span>놓침 <b id="fb-miss">0</b></span>
+            <span>정밀도 <b id="fb-prec">-</b></span>
+          </div>
+          <div class="rates" id="rates"></div>
+          <div class="led-strip" id="led-strip" title="2단계 확장: 좌석 하단 LED 스트립 미리보기 (1호차)"></div>
+          <div class="muted small">↑ 2단계 확장 좌석 하단 LED 스트립 미리보기(1호차) · 같은 C 로직 출력</div>
+        </div>
+      </div>
+
+      <div class="card" id="detail">
+        <div class="card-title">좌석 판정 근거 <span class="muted small" id="d-seat">좌석을 선택하세요</span></div>
+        <div id="d-body" class="muted">승객 화면의 좌석을 누르면 압력·정전용량·YOLO·CoP 값과 적용된 진리표 규칙이 표시됩니다.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">이벤트 로그</div>
+        <ul class="log" id="log"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 공정 방법 ======================= -->
+<section id="tab-logic" class="panel">
+  <div class="doc">
+    <div class="card live-truth">
+      <div class="card-title">진리표 (실시간) <span class="muted small">— '실시간 좌석' 탭에서 선택한 좌석에 적용된 줄이 강조됩니다</span></div>
+      <table class="tt" id="tt">
+        <thead><tr><th>압력 P</th><th>정전용량 C</th><th>ROI 머리</th><th>옆자리 머리</th><th>판정</th><th>표시</th><th>현재 좌석 수</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="muted small">※ 표의 '판정' 열은 C 로직의 <code>jk_truth_table()</code> 을 실제로 호출해 채운 값입니다.</div>
+    </div>
+    <article class="md" id="md-process"></article>
+  </div>
+</section>
+
+<!-- ======================= 결론 ======================= -->
+<section id="tab-conclusion" class="panel">
+  <div class="doc"><article class="md" id="md-conclusion"></article></div>
+</section>
+</main>
+
+<footer>
+  글쓰기와 발표 3조 (담당교수 이은영) · 함준석(조장) · 진백성 · 김시원 · 서영환 · 최별<br>
+  <span class="muted">좌석 판정은 모두 <code>c/jarikok.c</code> 를 WebAssembly 로 컴파일한 코드가 수행합니다. 센서 값은 가상 시뮬레이션입니다.</span>
+</footer>
+
+<script src="assets/jarikok_wasm.js"></script>
+<script src="assets/report.js"></script>
+<script src="assets/sim.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
